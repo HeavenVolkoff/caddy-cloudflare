@@ -1,62 +1,21 @@
-package cloudflare_only
+package cloudflare
 
 import (
-	"context"
-	"encoding/json"
 	"net"
 	"net/http"
 	"net/netip"
-	"sync"
-	"time"
 
 	"github.com/caddyserver/caddy/v2"
 	"github.com/caddyserver/caddy/v2/caddyconfig/caddyfile"
-	"github.com/caddyserver/caddy/v2/caddyconfig/httpcaddyfile"
 	"github.com/caddyserver/caddy/v2/modules/caddyhttp"
 	"go.uber.org/zap"
 )
 
-type CloudflareIPs struct {
-	IPv4CIDRs []string `json:"ipv4_cidrs"`
-	IPv6CIDRs []string `json:"ipv6_cidrs"`
-}
-
-func fetchCloudflareIPs(ctx context.Context) (*CloudflareIPs, error) {
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet,
-		"https://api.cloudflare.com/client/v4/ips", nil)
-	if err != nil {
-		return nil, err
-	}
-
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-
-	var result struct {
-		Result CloudflareIPs `json:"result"`
-	}
-
-	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
-		return nil, err
-	}
-
-	return &result.Result, nil
-}
-
-func init() {
-	caddy.RegisterModule(CloudflareOnly{})
-	httpcaddyfile.RegisterHandlerDirective("cloudflare_only", parseCaddyfile)
-}
-
 type CloudflareOnly struct {
 	RejectIfEmpty bool `json:"reject_if_empty,omitempty"`
 
-	mu     *sync.RWMutex
+	block  *CloudflareIPBlock
 	logger *zap.Logger
-
-	IPBlocks []netip.Prefix
 }
 
 func (CloudflareOnly) CaddyModule() caddy.ModuleInfo {
@@ -66,46 +25,9 @@ func (CloudflareOnly) CaddyModule() caddy.ModuleInfo {
 	}
 }
 
-func (cf *CloudflareOnly) updateIPBlocks(ctx context.Context) {
-	ticker := time.NewTicker(24 * time.Hour)
-	defer ticker.Stop()
-
-	for {
-		ips, err := fetchCloudflareIPs(ctx)
-		if err != nil {
-			cf.logger.Error("failed to get Cloudflare IPs", zap.Error(err))
-		} else {
-			var ipBlocks []netip.Prefix
-			for _, cidr := range append(ips.IPv4CIDRs, ips.IPv6CIDRs...) {
-				prefix, err := netip.ParsePrefix(cidr)
-				if err != nil {
-					cf.logger.Error("failed to parse Cloudflare CIDR",
-						zap.String("cidr", cidr), zap.Error(err))
-					continue
-				}
-				ipBlocks = append(ipBlocks, prefix)
-			}
-
-			cf.mu.Lock()
-			cf.IPBlocks = ipBlocks
-			cf.logger.Info("updated Cloudflare IP blocks", zap.Any("ip_blocks", ipBlocks))
-			cf.mu.Unlock()
-		}
-
-		select {
-		case <-ctx.Done():
-			return
-		case <-ticker.C:
-			continue
-		}
-	}
-}
-
 func (cf *CloudflareOnly) Provision(ctx caddy.Context) error {
-	cf.mu = &sync.RWMutex{}
-	cf.logger = ctx.Logger(cf)
-
-	go cf.updateIPBlocks(ctx)
+	cf.block = GetCloudflareIpBlock(ctx)
+	cf.logger = ctx.Logger()
 
 	return nil
 }
@@ -115,10 +37,10 @@ func (cf *CloudflareOnly) Validate() error {
 }
 
 func (cf CloudflareOnly) ServeHTTP(w http.ResponseWriter, r *http.Request, next caddyhttp.Handler) error {
-	cf.mu.RLock()
-	defer cf.mu.RUnlock()
+	cf.block.lock.RLock()
+	defer cf.block.lock.RUnlock()
 
-	if len(cf.IPBlocks) > 0 {
+	if len(cf.block.ips) > 0 {
 		remoteIP, _, err := net.SplitHostPort(r.RemoteAddr)
 		if err != nil {
 			return err
@@ -129,7 +51,7 @@ func (cf CloudflareOnly) ServeHTTP(w http.ResponseWriter, r *http.Request, next 
 			return err
 		}
 
-		for _, network := range cf.IPBlocks {
+		for _, network := range cf.block.ips {
 			if network.Contains(ip) {
 				return next.ServeHTTP(w, r)
 			}
@@ -167,12 +89,6 @@ func (cf *CloudflareOnly) UnmarshalCaddyfile(d *caddyfile.Dispenser) error {
 	}
 
 	return nil
-}
-
-func parseCaddyfile(h httpcaddyfile.Helper) (caddyhttp.MiddlewareHandler, error) {
-	var cf CloudflareOnly
-	err := cf.UnmarshalCaddyfile(h.Dispenser)
-	return cf, err
 }
 
 var (

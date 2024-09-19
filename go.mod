@@ -1,4 +1,4 @@
-module github.com/HeavenVolkoff/caddy-cloudflare-only
+module github.com/HeavenVolkoff/caddy-cloudflare
 
 go 1.21.0
 

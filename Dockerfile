@@ -5,7 +5,7 @@ WORKDIR /srv
 COPY . .
 
 RUN env CGO_ENABLED=0 xcaddy build \
-    --with github.com/HeavenVolkoff/caddy-cloudflare-only=$PWD \
+    --with github.com/HeavenVolkoff/caddy-cloudflare=$PWD \
     --output /usr/bin/caddy
 
 FROM caddy:2

@@ -5,6 +5,10 @@
 		output stdout
 		format console
 	}
+	servers {
+		trusted_proxies cloudflare
+		trusted_proxies static private_ranges
+	}
 }
 
 :8080 {
