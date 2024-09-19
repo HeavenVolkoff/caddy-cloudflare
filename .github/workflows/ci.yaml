@@ -39,6 +39,7 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           push: false
+          load: true
           tags: caddy/clouflare_only:latest
           context: .
 
