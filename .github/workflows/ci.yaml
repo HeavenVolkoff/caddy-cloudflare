@@ -18,10 +18,10 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Check if files have changed
+      - id: filter
+        name: Check if files have changed
         uses: dorny/paths-filter@v3
         continue-on-error: true
-        id: filter
         with:
           filters: |
             changes:
@@ -33,9 +33,11 @@ jobs:
               - '.github/workflows/ci.yaml'
 
       - name: Set up Docker Buildx
+        if: steps.filter.outcome != 'success' || steps.filter.outputs.changes == 'true'
         uses: docker/setup-buildx-action@v3
 
       - name: Build and push
+        if: steps.filter.outcome != 'success' || steps.filter.outputs.changes == 'true'
         uses: docker/build-push-action@v6
         with:
           push: false
@@ -44,6 +46,7 @@ jobs:
           context: .
 
       - name: Run tests
+        if: steps.filter.outcome != 'success' || steps.filter.outputs.changes == 'true'
         run: |
           set -euxo pipefail
 
