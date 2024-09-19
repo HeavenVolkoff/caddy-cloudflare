@@ -35,11 +35,11 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - id: docker_build
-        name: Build and push
+      - name: Build and push
         uses: docker/build-push-action@v6
         with:
           push: false
+          tags: caddy/clouflare_only:latest
           context: .
 
       - name: Run tests
@@ -49,11 +49,10 @@ jobs:
           curl -sSfL https://raw.githubusercontent.com/eficode/wait-for/v2.1.0/wait-for -o wait-for
           chmod +x ./wait-for
 
-          id="${{ steps.docker_build.outputs.imageid }}"
           url="http://127.0.0.1"
           caddyfile="$(pwd)/example/Caddyfile"
 
-          docker run -d -p 8080:8080 -p 8081:8081 -p 8082:8082 -v "${caddyfile}:/etc/caddy/Caddyfile" "$id"
+          docker run -d -p 8080:8080 -p 8081:8081 -p 8082:8082 -v "${caddyfile}:/etc/caddy/Caddyfile" caddy/clouflare_only
 
           ./wait-for "${url}:8080" -t 5
 
@@ -77,7 +76,7 @@ jobs:
 
           docker stop "$(docker ps --format '{{ .ID }}')"
 
-          docker run -d -p 8080:8080 -p 8081:8081 -p 8082:8082 --add-host=api.cloudflare.com:0.0.0.0 -v "${caddyfile}:/etc/caddy/Caddyfile" "$id"
+          docker run -d -p 8080:8080 -p 8081:8081 -p 8082:8082 --add-host=api.cloudflare.com:0.0.0.0 -v "${caddyfile}:/etc/caddy/Caddyfile" caddy/clouflare_only
 
           ./wait-for "${url}:8080" -t 5
 
