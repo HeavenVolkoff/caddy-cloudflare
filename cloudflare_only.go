@@ -22,7 +22,8 @@ type CloudflareIPs struct {
 }
 
 func fetchCloudflareIPs(ctx context.Context) (*CloudflareIPs, error) {
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, "https://api.cloudflare.com/client/v4/ips", nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet,
+		"https://api.cloudflare.com/client/v4/ips", nil)
 	if err != nil {
 		return nil, err
 	}
@@ -84,7 +85,8 @@ func (cf *CloudflareOnly) updateIPBlocks(ctx context.Context) {
 			for _, cidr := range append(ips.IPv4CIDRs, ips.IPv6CIDRs...) {
 				prefix, err := netip.ParsePrefix(cidr)
 				if err != nil {
-					cf.logger.Error("failed to parse CIDR", zap.String("cidr", cidr), zap.Error(err))
+					cf.logger.Error("failed to parse CIDR",
+						zap.String("cidr", cidr), zap.Error(err))
 					continue
 				}
 				ipBlocks = append(ipBlocks, prefix)

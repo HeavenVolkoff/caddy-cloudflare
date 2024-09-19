@@ -1,0 +1,7 @@
+{
+  "recommendations": [
+    "golang.Go",
+    "redhat.vscode-yaml",
+    "editorconfig.editorconfig"
+  ]
+}

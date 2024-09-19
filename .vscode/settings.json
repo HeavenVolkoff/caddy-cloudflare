@@ -1,0 +1,16 @@
+{
+  "[go]": {
+    "editor.defaultFormatter": "golang.go"
+  },
+  "go.toolsEnvVars": {
+    "GOFUMPT_SPLIT_LONG_LINES": "on"
+  },
+  "go.useLanguageServer": true,
+  "gopls": { "ui.semanticTokens": true, "formatting.gofumpt": true },
+  "explorer.fileNesting.enabled": true,
+  "explorer.fileNesting.patterns": {
+    "go.mod": "go.sum",
+    "README.md": "CONTRIBUTING.md, CODE_OF_CONDUCT.md, SECURITY.md",
+    "Dockerfile": ".dockerignore"
+  }
+}
