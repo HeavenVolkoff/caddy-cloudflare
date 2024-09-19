@@ -1,0 +1,24 @@
+{
+	order cloudflare_only before redir
+	log default {
+		level DEBUG
+		output stdout
+		format console
+	}
+}
+
+:8080 {
+	respond "Hello, World!"
+}
+
+:8081 {
+	cloudflare_only
+	respond "Hello, Cloudflare!"
+}
+
+:8082 {
+	cloudflare_only {
+		reject_if_empty false
+	}
+	respond "Hello, Cloudflare!"
+}

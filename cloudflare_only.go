@@ -71,21 +71,15 @@ func (cf *CloudflareOnly) updateIPBlocks(ctx context.Context) {
 	defer ticker.Stop()
 
 	for {
-		select {
-		case <-ctx.Done():
-			return
-		case <-ticker.C:
-			ips, err := fetchCloudflareIPs(ctx)
-			if err != nil {
-				cf.logger.Error("failed to get Cloudflare IPs", zap.Error(err))
-				continue
-			}
-
+		ips, err := fetchCloudflareIPs(ctx)
+		if err != nil {
+			cf.logger.Error("failed to get Cloudflare IPs", zap.Error(err))
+		} else {
 			var ipBlocks []netip.Prefix
 			for _, cidr := range append(ips.IPv4CIDRs, ips.IPv6CIDRs...) {
 				prefix, err := netip.ParsePrefix(cidr)
 				if err != nil {
-					cf.logger.Error("failed to parse CIDR",
+					cf.logger.Error("failed to parse Cloudflare CIDR",
 						zap.String("cidr", cidr), zap.Error(err))
 					continue
 				}
@@ -94,7 +88,15 @@ func (cf *CloudflareOnly) updateIPBlocks(ctx context.Context) {
 
 			cf.mu.Lock()
 			cf.IPBlocks = ipBlocks
+			cf.logger.Info("updated Cloudflare IP blocks", zap.Any("ip_blocks", ipBlocks))
 			cf.mu.Unlock()
+		}
+
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			continue
 		}
 	}
 }
@@ -116,7 +118,7 @@ func (cf CloudflareOnly) ServeHTTP(w http.ResponseWriter, r *http.Request, next 
 	cf.mu.RLock()
 	defer cf.mu.RUnlock()
 
-	if len(cf.IPBlocks) >= 0 {
+	if len(cf.IPBlocks) > 0 {
 		remoteIP, _, err := net.SplitHostPort(r.RemoteAddr)
 		if err != nil {
 			return err
