@@ -1,6 +1,6 @@
 # Caddy Cloudflare
 
-Caddy v2 module for retrieving Cloudflare IP blocks. It extends [trusted_proxy](https://caddyserver.com/docs/caddyfile/options#trusted-proxies) with a new cloudflare IP source module and add a new `cloudflare_only` directive for rejecting requests from ips outside the Cloudflare block range.
+Caddy v2 module for retrieving Cloudflare IP blocks. It extends [trusted_proxy](https://caddyserver.com/docs/caddyfile/options#trusted-proxies) with a new `cloudflare` IP source module and add a new `cloudflare_only` directive for rejecting requests from ips outside the Cloudflare block range.
 
 ## Installation
 
@@ -18,8 +18,8 @@ Add the following to your Caddyfile to enable the plugin:
 {
     order cloudflare_only before redir
     servers {
-		trusted_proxies cloudflare
-	}
+        trusted_proxies cloudflare
+    }
 }
 
 yourdomain.com {
