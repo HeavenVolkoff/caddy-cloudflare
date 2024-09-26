@@ -49,4 +49,5 @@ This project is licensed under the MIT License. See the LICENSE file for details
 I am not affiliated with either Caddy or Cloudflare.
 
 Caddy® is a registered trademark of Stack Holdings GmbH.
+
 Cloudflare® is a registered trademarks of Cloudflare, Inc.
